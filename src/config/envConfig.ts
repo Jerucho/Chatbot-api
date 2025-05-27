@@ -10,4 +10,6 @@ export const envConfig = {
   TOKEN: process.env.TOKEN,
   PORT: process.env.PORT,
   FRONTEND_URL: process.env.FRONTEND_URL,
+  JWT_SECRET: process.env.JWT_SECRET,
+  NODE_ENV: process.env.NODE_ENV,
 };

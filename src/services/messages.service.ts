@@ -225,7 +225,7 @@ export class MessagesService {
       const randomAgent = agents[Math.floor(Math.random() * agents.length)];
       chat.assignedAdvisor = randomAgent._id;
       await chat.save();
-      return randomAgent.id;
+      return randomAgent.userId;
     }
   }
 
@@ -337,7 +337,7 @@ export class MessagesService {
           // Emitir notificación vía Socket.IO
           if (this.ioInstance) {
             this.ioInstance
-              .to(assignedAdvisor || "51934313127")
+              .to(assignedAdvisor || "33333333333")
               .emit("advisorNotification", {
                 area,
                 message: functionOutput,

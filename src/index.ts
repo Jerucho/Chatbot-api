@@ -1,49 +1,85 @@
 import express from "express";
 import bodyParser from "body-parser";
 import messagesRoutes from "./routes/messages.routes";
+import protectedMessagesRoutes from "./routes/protected.messages.routes";
 import { envConfig } from "./config/envConfig";
 import { MongoService } from "./services/mongo.service";
 import { Server } from "socket.io";
 import { createServer } from "http";
-import cors from "cors"; // <--- ¡Importa el paquete CORS!
+import cors from "cors";
 import { MessagesService } from "./services/messages.service";
+import cookieParser from "cookie-parser";
+import authRoutes from "./routes/auth.routes";
+import { socketAuthMiddleware } from "./middlewares/socket.auth.middleware";
+import { Agent } from "./interfaces/Agents";
+
 const app = express();
 const PORT = envConfig.PORT || 3000;
 
 const httpServer = createServer(app);
-const io = new Server(httpServer, {
-  cors: {
-    origin: envConfig.FRONTEND_URL, // Asegúrate que esto apunte a tu Angular (ej. 'http://localhost:4200')
-    methods: ["GET", "POST"],
-  },
-});
 
-io.on("connection", (socket) => {
-  const userId = socket.handshake.query.userId as string;
+// IMPORTANTE: cookieParser debe ir ANTES de las rutas
+app.use(cookieParser());
 
-  if (userId) {
-    socket.join(userId);
-    console.log(`✅ Usuario conectado a sala ${userId}`);
-  } else {
-    console.warn("⚠️ userId no recibido en la conexión.");
-  }
-});
-
-// --- ¡Añade el middleware CORS para las solicitudes HTTP! ---
+// Configuración CORS más específica
 app.use(
   cors({
-    origin: envConfig.FRONTEND_URL, // También debe coincidir con la URL de tu Angular
-    methods: ["GET", "POST", "PUT", "DELETE"], // Permite los métodos HTTP que uses
-    credentials: true, // Si necesitas enviar cookies/headers de autenticación
+    origin: envConfig.FRONTEND_URL || "http://localhost:4200", // URL exacta de Angular
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "Cookie"],
+    credentials: true, // Muy importante para cookies
+    optionsSuccessStatus: 200, // Para navegadores legacy
   })
 );
-MessagesService.ioInstance = io;
+
+// Middleware para debugging de cookies
+// app.use((req, res, next) => {
+//   console.log("🍪 Cookies recibidas:", req.cookies);
+//   console.log("📝 Headers:", req.headers);
+//   next();
+// });
 
 app.use(bodyParser.json());
 
+const io = new Server(httpServer, {
+  cors: {
+    origin: envConfig.FRONTEND_URL || "http://localhost:4200",
+    methods: ["GET", "POST"],
+    credentials: true,
+  },
+});
+
+// Aplicar middleware de autenticación a Socket.IO
+io.use(socketAuthMiddleware);
+
+io.on("connection", (socket) => {
+  const user = socket.data.user;
+
+  if (user) {
+    socket.join(user.userId);
+    console.log(`✅ Usuario ${user.agentName} conectado a sala ${user.userId}`);
+  } else {
+    console.warn("⚠️ Usuario no autenticado intentando conectar.");
+    socket.disconnect();
+  }
+});
+
+MessagesService.ioInstance = io;
+
 MongoService.connectToDatabase();
+
+// Rutas públicas
 app.use(messagesRoutes);
+app.use("/auth", authRoutes);
+
+// Rutas protegidas
+app.use("/api/messages", protectedMessagesRoutes);
 
 httpServer.listen(PORT, () => {
   console.log(`🚀 Servidor HTTP escuchando en http://localhost:${PORT}`);
+  console.log(
+    `🌐 CORS configurado para: ${
+      envConfig.FRONTEND_URL || "http://localhost:4200"
+    }`
+  );
 });
