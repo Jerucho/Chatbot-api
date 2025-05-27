@@ -5,6 +5,9 @@ import { envConfig } from "../config/envConfig";
 import { AgentsService } from "../services/agents.service";
 const { VERIFY_TOKEN, PHONE_NUMBER_ID, TOKEN } = envConfig;
 
+// Set para almacenar IDs de mensajes procesados
+const processedMessageIds = new Set<string>();
+
 // Funciones auxiliares para el manejo de WhatsApp
 export const sendWhatsAppMessage = async (to: string, message: string) => {
   if (!message?.trim()) {
@@ -103,10 +106,37 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
       return res.sendStatus(404);
     }
 
-    const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
+    const change = body.entry?.[0]?.changes?.[0];
+
+    // Verificar si es una actualización de estado
+    if (change?.value?.statuses) {
+      return res.sendStatus(200);
+    }
+
+    const message = change?.value?.messages?.[0];
+
     if (!message?.from) {
       console.log("❌ Mensaje no válido o sin remitente");
       return res.sendStatus(200);
+    }
+
+    // Verificar si el mensaje ya fue procesado
+    const messageId = message.id;
+    console.log("🔑 ID del mensaje:", messageId);
+
+    // Agregar el ID del mensaje al conjunto de procesados
+    if (messageId) {
+      processedMessageIds.add(messageId);
+      console.log("✅ ID agregado al conjunto de procesados");
+    }
+
+    // Limpiar IDs antiguos (mantener solo los últimos 1000)
+    if (processedMessageIds.size > 1000) {
+      const oldestIds = Array.from(processedMessageIds).slice(
+        0,
+        processedMessageIds.size - 1000
+      );
+      oldestIds.forEach((id) => processedMessageIds.delete(id));
     }
 
     const from = message.from;
