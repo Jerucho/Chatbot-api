@@ -10,6 +10,7 @@ const chatSchema = new mongoose.Schema({
   userId: { type: String, required: true },
   messages: [messageSchema],
   createdAt: { type: Date, default: Date.now },
+  lastContactAt: { type: Date, default: Date.now },
 });
 
 export const Chat = mongoose.model("Chat", chatSchema);
