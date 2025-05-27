@@ -200,6 +200,14 @@ export const getPendingMessagesOfAgent = async (
     const pendingMessages = await AgentsService.getPendingMessagesOfAgent(
       userId
     );
+
+    console.log("🔍 Mensajes pendientes del agente:", pendingMessages);
+
+    if (!pendingMessages) {
+      res.status(404).json({ message: "No hay mensajes pendientes" });
+      return;
+    }
+
     res.json({ pendingMessages });
   } catch (error) {
     res.status(500).json({ message: "Error al obtener mensajes pendientes" });
