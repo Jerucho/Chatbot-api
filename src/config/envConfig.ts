@@ -9,4 +9,5 @@ export const envConfig = {
   PHONE_NUMBER_ID: process.env.PHONE_NUMBER_ID,
   TOKEN: process.env.TOKEN,
   PORT: process.env.PORT,
+  FRONTEND_URL: process.env.FRONTEND_URL,
 };

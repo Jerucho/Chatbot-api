@@ -103,21 +103,24 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
     const { body } = req;
     if (!body.object) {
       console.log("❌ Objeto no válido en la solicitud");
-      return res.sendStatus(404);
+      res.sendStatus(404);
+      return;
     }
 
     const change = body.entry?.[0]?.changes?.[0];
 
     // Verificar si es una actualización de estado
     if (change?.value?.statuses) {
-      return res.sendStatus(200);
+      res.sendStatus(200);
+      return;
     }
 
     const message = change?.value?.messages?.[0];
 
     if (!message?.from) {
       console.log("❌ Mensaje no válido o sin remitente");
-      return res.sendStatus(200);
+      res.sendStatus(200);
+      return;
     }
 
     // Verificar si el mensaje ya fue procesado
@@ -145,7 +148,8 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
     // Validar que el mensaje no esté vacío
     if (!msg.trim()) {
       console.log("⚠️ Mensaje vacío recibido");
-      return res.sendStatus(200);
+      res.sendStatus(200);
+      return;
     }
 
     console.log(`📩 Mensaje recibido de ${from}: ${msg}`);
@@ -153,26 +157,28 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
     // Guardar mensaje del usuario
     await MessagesService.postMessage(from, "user", msg);
 
-    // Manejar respuesta de lista interactiva
-    if (message.interactive?.list_reply) {
-      const selectedOption = message.interactive.list_reply.id;
-      const confirmationMessage = `Has seleccionado el área de ${selectedOption}. Un asesor se pondrá en contacto contigo pronto.`;
+    // // Manejar respuesta de lista interactiva
+    // if (message.interactive?.list_reply) {
+    //   const selectedOption = message.interactive.list_reply.id;
+    //   const confirmationMessage = `Has seleccionado el área de ${selectedOption}. Un asesor se pondrá en contacto contigo pronto.`;
 
-      await AgentsService.sendNotificationToAvailableAgents(selectedOption);
-      await sendWhatsAppMessage(from, confirmationMessage);
-      await MessagesService.postMessage(from, "assistant", confirmationMessage);
-      return res.sendStatus(200);
-    }
+    //   await AgentsService.sendNotificationToAvailableAgents(selectedOption);
+    //   await sendWhatsAppMessage(from, confirmationMessage);
+    //   await MessagesService.postMessage(from, "assistant", confirmationMessage);
+    //   res.sendStatus(200);
+    //   return;
+    // }
 
-    // Manejar solicitud de contacto o menú
-    if (
-      msg.toLowerCase().includes("contactar") ||
-      msg.toLowerCase().includes("área") ||
-      msg.toLowerCase().includes("area")
-    ) {
-      await sendInteractiveMenu(from);
-      return res.sendStatus(200);
-    }
+    // // Manejar solicitud de contacto o menú
+    // if (
+    //   msg.toLowerCase().includes("contactar") ||
+    //   msg.toLowerCase().includes("área") ||
+    //   msg.toLowerCase().includes("area")
+    // ) {
+    //   await sendInteractiveMenu(from);
+    //   res.sendStatus(200);
+    //   return;
+    // }
 
     // Obtener y enviar respuesta del AI
     const responseOfAI = await MessagesService.responseOfAI(from, msg);
@@ -180,7 +186,8 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
     // Validar respuesta del AI
     if (!responseOfAI?.trim()) {
       console.log("⚠️ Respuesta vacía del AI");
-      return res.sendStatus(200);
+      res.sendStatus(200);
+      return;
     }
 
     await MessagesService.postMessage(from, "assistant", responseOfAI);
@@ -188,6 +195,7 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
 
     console.log("✅ Respuesta enviada correctamente");
     res.sendStatus(200);
+    return;
   } catch (error: any) {
     console.error("❌ Error al procesar el mensaje:", {
       message: error.message,
