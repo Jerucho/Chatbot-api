@@ -3,6 +3,7 @@ import { AuthService } from "../services/auth.service";
 import jwt from "jsonwebtoken";
 import { envConfig } from "../config/envConfig";
 import { Agent } from "../interfaces/Agents";
+import { Area } from "../interfaces/Area";
 
 export const login = async (req: Request, res: Response) => {
   const { email, password } = req.body;
@@ -51,7 +52,8 @@ export const me = async (req: Request, res: Response) => {
 
     if (!token) {
       console.log("❌ No se encontró token en cookies");
-      return res.status(401).json({ message: "Unauthorized: No token found" });
+      res.status(401).json({ message: "Unauthorized: No token found" });
+      return;
     }
 
     console.log("🔑 Token encontrado:", token.substring(0, 20) + "...");
@@ -70,7 +72,8 @@ export const me = async (req: Request, res: Response) => {
 
     if (!agent) {
       console.log("❌ Agente no encontrado en BD");
-      return res.status(404).json({ message: "Agent not found" });
+      res.status(404).json({ message: "Agent not found" });
+      return;
     }
 
     console.log("✅ Agente encontrado:", {
@@ -78,12 +81,19 @@ export const me = async (req: Request, res: Response) => {
       agentName: agent.agentName,
     });
 
-    return res.status(200).json({
+    console.log("🔍 Área del agente:", agent.area);
+
+    const area = await Area.findById(agent.area);
+
+    res.status(200).json({
       id_user: agent.userId,
       agentName: agent.agentName,
+      idUserDB: agent._id,
+      area: area?.name || "Sin área asignada",
     });
   } catch (error) {
     console.error("❌ Error in /auth/me:", error);
-    return res.status(401).json({ message: "Invalid or expired token" });
+    res.status(401).json({ message: "Invalid or expired token" });
+    return;
   }
 };

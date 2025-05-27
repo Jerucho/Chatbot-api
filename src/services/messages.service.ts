@@ -78,7 +78,8 @@ export class MessagesService {
     role: "user" | "assistant" | "tool",
     content: string,
     tool_call_id?: string,
-    name?: string
+    name?: string,
+    userName?: string
   ) {
     try {
       const chat = await Chat.findOne({ userId });
@@ -114,12 +115,14 @@ export class MessagesService {
       if (chat) {
         chat.messages.push(newMessage);
         chat.lastContactAt = new Date();
+        chat.userName = userName;
         await chat.save();
       } else {
         await Chat.create({
           userId,
           messages: [newMessage],
           lastContactAt: new Date(),
+          userName,
         });
       }
     } catch (error) {
@@ -136,8 +139,10 @@ export class MessagesService {
   // Función para manejar solicitud a área
   public static async handleAdvisorRequest(
     area: string,
+    userId: string,
     ruc?: string,
-    acta_number?: string
+    acta_number?: string,
+    userName?: string
   ) {
     console.log(
       `Solicitud de asesor recibida - Área: ${area}, RUC: ${
@@ -149,6 +154,13 @@ export class MessagesService {
     if (ruc) responseMessage += ` Hemos registrado tu RUC: ${ruc}.`;
     if (acta_number) responseMessage += ` Y el número de Acta: ${acta_number}.`;
     responseMessage += ` Por favor, espera su comunicación.`;
+
+    // Actualizar el estado needsHumanResponse a true
+    const chat = await Chat.findOne({ userId });
+    if (chat) {
+      chat.needsHumanResponse = true;
+      await chat.save();
+    }
 
     return responseMessage;
   }
@@ -230,10 +242,21 @@ export class MessagesService {
   }
 
   // Función principal para enviar mensaje al modelo y manejar respuesta
-  public static async responseOfAI(userId: string, prompt: string) {
+  public static async responseOfAI(
+    userId: string,
+    prompt: string,
+    userName: string
+  ) {
     try {
       // Guardar el prompt del usuario
-      await this.postMessage(userId, "user", prompt);
+      await this.postMessage(
+        userId,
+        "user",
+        prompt,
+        undefined,
+        undefined,
+        userName
+      );
 
       const chatDocument = await Chat.findOne({ userId });
       const history = chatDocument?.messages || [];
@@ -250,7 +273,7 @@ export class MessagesService {
       // Agregar mensaje system con contexto
       messagesForApi.unshift({
         role: "system",
-        content: `${content} ${aiContextString}`,
+        content: `El nombre del usuario es ${userName}, ${content} ${aiContextString}`,
       });
 
       // Definir herramienta para llamadas de función
@@ -328,8 +351,10 @@ export class MessagesService {
 
           const functionOutput = await this.handleAdvisorRequest(
             area,
+            userId,
             ruc,
-            acta_number
+            acta_number,
+            userName
           );
 
           const assignedAdvisor = await this.assignAdvisor(userId);
@@ -343,6 +368,7 @@ export class MessagesService {
                 message: functionOutput,
                 ruc,
                 acta_number,
+                userName,
                 numeroTel: userId,
                 timestamp: new Date().toISOString(),
               });
@@ -358,7 +384,9 @@ export class MessagesService {
             userId,
             "assistant",
             message.content || "",
-            undefined // Don't pass tool_call_id for assistant messages
+            undefined,
+            undefined,
+            userName
           );
 
           // Save the assistant message with tool_calls to DB
@@ -417,14 +445,24 @@ export class MessagesService {
           await this.postMessage(
             userId,
             "assistant",
-            finalMessage.content || ""
+            finalMessage.content || "",
+            undefined,
+            undefined,
+            userName
           );
 
           return finalMessage.content || "";
         }
       } else {
         // No hay llamada a función, respuesta directa del AI
-        await this.postMessage(userId, "assistant", message.content || "");
+        await this.postMessage(
+          userId,
+          "assistant",
+          message.content || "",
+          undefined,
+          undefined,
+          userName
+        );
         return message.content || "";
       }
     } catch (error) {

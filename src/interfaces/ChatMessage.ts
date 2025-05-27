@@ -1,6 +1,4 @@
 import mongoose from "mongoose";
-import { Area } from "./Area";
-import { Agent } from "./Agents";
 
 const messageSchema = new mongoose.Schema({
   role: {
@@ -33,12 +31,18 @@ const chatSchema = new mongoose.Schema({
   userId: { type: String, required: true, unique: true },
   messages: [messageSchema],
   createdAt: { type: Date, default: Date.now },
+  userName: { type: String, required: false },
   lastContactAt: { type: Date, default: Date.now },
   needsHumanResponse: { type: Boolean, default: false },
   assignedArea: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "Area",
     required: false,
+  },
+  agentResponseStatus: {
+    type: String,
+    enum: ["pending", "active", "finished"],
+    default: "pending",
   },
   assignedAdvisor: {
     type: mongoose.Schema.Types.ObjectId,

@@ -73,7 +73,7 @@ app.use(messagesRoutes);
 app.use("/auth", authRoutes);
 
 // Rutas protegidas
-app.use("/api/messages", protectedMessagesRoutes);
+app.use("/api", protectedMessagesRoutes);
 
 httpServer.listen(PORT, () => {
   console.log(`🚀 Servidor HTTP escuchando en http://localhost:${PORT}`);

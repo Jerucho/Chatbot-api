@@ -117,6 +117,10 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
 
     const message = change?.value?.messages?.[0];
 
+    const contact = change?.value?.contacts?.[0];
+    const userName = contact?.profile?.name || "Desconocido";
+    console.log(`👤 Nombre del usuario: ${userName}`);
+
     if (!message?.from) {
       console.log("❌ Mensaje no válido o sin remitente");
       res.sendStatus(200);
@@ -155,33 +159,14 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
     console.log(`📩 Mensaje recibido de ${from}: ${msg}`);
 
     // Guardar mensaje del usuario
-    await MessagesService.postMessage(from, "user", msg);
-
-    // // Manejar respuesta de lista interactiva
-    // if (message.interactive?.list_reply) {
-    //   const selectedOption = message.interactive.list_reply.id;
-    //   const confirmationMessage = `Has seleccionado el área de ${selectedOption}. Un asesor se pondrá en contacto contigo pronto.`;
-
-    //   await AgentsService.sendNotificationToAvailableAgents(selectedOption);
-    //   await sendWhatsAppMessage(from, confirmationMessage);
-    //   await MessagesService.postMessage(from, "assistant", confirmationMessage);
-    //   res.sendStatus(200);
-    //   return;
-    // }
-
-    // // Manejar solicitud de contacto o menú
-    // if (
-    //   msg.toLowerCase().includes("contactar") ||
-    //   msg.toLowerCase().includes("área") ||
-    //   msg.toLowerCase().includes("area")
-    // ) {
-    //   await sendInteractiveMenu(from);
-    //   res.sendStatus(200);
-    //   return;
-    // }
+    await MessagesService.postMessage(from, "user", msg, userName);
 
     // Obtener y enviar respuesta del AI
-    const responseOfAI = await MessagesService.responseOfAI(from, msg);
+    const responseOfAI = await MessagesService.responseOfAI(
+      from,
+      msg,
+      userName
+    );
 
     // Validar respuesta del AI
     if (!responseOfAI?.trim()) {
@@ -202,5 +187,21 @@ export const postWebhookMessage = async (req: Request, res: Response) => {
       response: error.response?.data,
     });
     res.sendStatus(200);
+  }
+};
+
+export const getPendingMessagesOfAgent = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    // Se envia el userId del agente de la base de datos
+    const { userId } = req.params;
+    const pendingMessages = await AgentsService.getPendingMessagesOfAgent(
+      userId
+    );
+    res.json({ pendingMessages });
+  } catch (error) {
+    res.status(500).json({ message: "Error al obtener mensajes pendientes" });
   }
 };

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { authMiddleware } from "../middlewares/auth.middleware";
 import { MessagesService } from "../services/messages.service";
+import { getPendingMessagesOfAgent } from "../controllers/messages.controller";
 
 const router = Router();
 
@@ -8,7 +9,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // Ruta para obtener el historial de chat
-router.get("/chat/:userId", async (req, res) => {
+router.get("/chats/:userId", async (req, res) => {
   try {
     const { userId } = req.params;
     const messages = await MessagesService.getChatHistory(userId);
@@ -17,5 +18,7 @@ router.get("/chat/:userId", async (req, res) => {
     res.status(500).json({ message: "Error al obtener el historial de chat" });
   }
 });
+
+router.get("/pending/:userId", getPendingMessagesOfAgent);
 
 export default router;

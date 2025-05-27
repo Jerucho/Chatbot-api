@@ -2,6 +2,7 @@ import { OpenAI } from "openai";
 import { Agent } from "../interfaces/Agents";
 import { Area } from "../interfaces/Area";
 import { sendWhatsAppMessage } from "../controllers/messages.controller";
+import { Chat } from "../interfaces/ChatMessage";
 
 export class AgentsService {
   static async getAvailableAgents(areaName: string) {
@@ -16,14 +17,16 @@ export class AgentsService {
     return agents;
   }
 
-  static async sendNotificationToAvailableAgents(areaName: string) {
-    const agents = await this.getAvailableAgents(areaName);
-    if (agents.length === 0) {
-      throw new Error("No hay agentes disponibles");
+  static async getPendingMessagesOfAgent(userId: string) {
+    const agent = await Agent.findById(userId).populate("area");
+    if (!agent) {
+      throw new Error("No se encontró el agente");
     }
-    const agent = agents[0];
-    const message = `Hola, ${agent.agentName}, tienes una nueva solicitud de contacto.`;
-    console.log(message);
-    await sendWhatsAppMessage(agent.phoneNumber, message);
+    const pendingMessages = await Chat.find({
+      assignedAdvisor: agent._id,
+      needsHumanResponse: true,
+    });
+
+    return pendingMessages;
   }
 }
